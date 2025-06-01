@@ -15,3 +15,5 @@ wheels/
 #OS specific files: MacOS
 .DS_Store
 img/.DS_Store
+uv.lock
+

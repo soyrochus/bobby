@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "English Language excersises with tutor"
 readme = "README.md"
 requires-python = ">=3.12"
+packages=["bobby"]
 dependencies = [
     "numpy",
     "sounddevice",
@@ -12,3 +13,9 @@ dependencies = [
     "python-dotenv",
     "PyGObject",
 ]
+
+[project.scripts]
+bobby = "bobby.app:main"
+
+[tool.setuptools.package-data]
+bobby = ["style.css"]
