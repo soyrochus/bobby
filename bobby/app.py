@@ -10,12 +10,14 @@ from importlib import resources
 
 from .phrases import PHRASES
 from .openai_utils import tts_synthesize, stt_transcribe
+import threading
 from .recorder import Recorder
 
 class BobbyApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id="com.example.Bobby")
         self.recorder = Recorder()
+        self.running = False
 
     def load_css(self):
         provider = Gtk.CssProvider()
@@ -78,7 +80,7 @@ class BobbyApp(Gtk.Application):
 
         nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         practice_btn = Gtk.Button(label="Practice")
-        practice_btn.connect("clicked", self.on_practice_clicked)
+        practice_btn.connect("clicked", self.on_nav_practice_clicked)
         progress_btn = Gtk.Button(label="Progress")
         settings_nav_btn = Gtk.Button(label="Settings")
         nav.append(practice_btn)
@@ -99,10 +101,14 @@ class BobbyApp(Gtk.Application):
             row = Gtk.ListBoxRow()
             hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
             mic_button = Gtk.Button()
-            mic_button.set_tooltip_text("Play phrase")
+            mic_button.set_tooltip_text("Practice phrase")
             mic_icon = Gtk.Image.new_from_icon_name("media-record-symbolic")
             mic_button.set_child(mic_icon)
-            mic_button.connect("clicked", self.on_play_clicked, phrase["text"])
+            feedback_label = Gtk.Label()
+            feedback_label.set_xalign(0)
+            mic_button.connect(
+                "clicked", self.on_play_clicked, phrase["text"], feedback_label, mic_button
+            )
             hbox.append(mic_button)
 
             vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
@@ -114,6 +120,7 @@ class BobbyApp(Gtk.Application):
             cat_label.get_style_context().add_class("dim-label")
             vbox.append(phrase_label)
             vbox.append(cat_label)
+            vbox.append(feedback_label)
 
             hbox.append(vbox)
             row.set_child(hbox)
@@ -127,16 +134,27 @@ class BobbyApp(Gtk.Application):
                 btn.set_active(False)
         self.populate_list(category)
 
-    def on_play_clicked(self, button: Gtk.Button, phrase: str):
-        print(f"Playing phrase: {phrase}")
-        GLib.idle_add(self._play_phrase, phrase)
+    def on_play_clicked(self, button: Gtk.Button, phrase: str, label: Gtk.Label, mic_button: Gtk.Button):
+        if self.running:
+            return
+        self.running = True
+        ctx = mic_button.get_style_context()
+        ctx.remove_class("result-good")
+        ctx.remove_class("result-bad")
+        threading.Thread(
+            target=self._practice_flow,
+            args=(phrase, label, mic_button),
+            daemon=True,
+        ).start()
 
-    def _play_phrase(self, phrase: str):
+    def _practice_flow(self, phrase: str, label: Gtk.Label, button: Gtk.Button):
+        ctx = button.get_style_context()
+        GLib.idle_add(label.set_text, "Playing...")
+        GLib.idle_add(ctx.add_class, "playing")
         try:
             data = tts_synthesize(phrase)
             with open("phrase.mp3", "wb") as f:
                 f.write(data)
-            # play with sounddevice
             import soundfile as sf
             import sounddevice as sd
 
@@ -144,20 +162,64 @@ class BobbyApp(Gtk.Application):
             sd.play(audio, sr)
             sd.wait()
         except Exception as e:
-            print("TTS failed", e)
-        return False
+            GLib.idle_add(label.set_text, f"TTS failed: {e}")
+            GLib.idle_add(ctx.remove_class, "playing")
+            self.running = False
+            return
+        GLib.idle_add(ctx.remove_class, "playing")
 
-    def on_practice_clicked(self, button: Gtk.Button):
-        print("Recording...")
-        GLib.idle_add(self._record_and_transcribe)
-
-    def _record_and_transcribe(self):
+        GLib.idle_add(label.set_text, "Recording...")
+        GLib.idle_add(ctx.add_class, "recording")
         try:
             wav = self.recorder.record(3)
-            text = stt_transcribe(wav)
-            print("You said:", text)
         except Exception as e:
-            print("STT failed", e)
-        return False
+            GLib.idle_add(label.set_text, f"Record failed: {e}")
+            GLib.idle_add(ctx.remove_class, "recording")
+            self.running = False
+            return
+        GLib.idle_add(ctx.remove_class, "recording")
+
+        GLib.idle_add(label.set_text, "Analyzing...")
+        GLib.idle_add(ctx.add_class, "analyzing")
+        try:
+            text = stt_transcribe(wav)
+        except Exception as e:
+            GLib.idle_add(label.set_text, f"STT failed: {e}")
+            GLib.idle_add(ctx.remove_class, "analyzing")
+            self.running = False
+            return
+        GLib.idle_add(ctx.remove_class, "analyzing")
+
+        feedback = self._compare_phrase(phrase, text)
+        GLib.idle_add(label.set_text, feedback)
+        if "Great job" in feedback:
+            GLib.idle_add(ctx.add_class, "result-good")
+        else:
+            GLib.idle_add(ctx.add_class, "result-bad")
+        self.running = False
+
+    def _compare_phrase(self, expected: str, actual: str) -> str:
+        exp = expected.lower().split()
+        act = actual.lower().split()
+        missing = [w for w in exp if w not in act]
+        extra = [w for w in act if w not in exp]
+        if not missing and not extra:
+            return f"You said: {actual}\nGreat job!"
+        parts = [f"You said: {actual}"]
+        if missing:
+            parts.append("Missed: " + ", ".join(missing))
+        if extra:
+            parts.append("Extra: " + ", ".join(extra))
+        return "\n".join(parts)
+
+    def on_nav_practice_clicked(self, button: Gtk.Button):
+        dialog = Gtk.MessageDialog(
+            transient_for=self.props.active_window,
+            modal=True,
+            buttons=Gtk.ButtonsType.OK,
+            text="Select a phrase's microphone to practice."
+        )
+        dialog.connect("response", lambda d, r: d.destroy())
+        dialog.show()
 
 
