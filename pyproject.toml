@@ -1,0 +1,14 @@
+[project]
+name = "Bobby"
+version = "0.1.0"
+description = "English Language excersises with tutor"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "sounddevice",
+    "soundfile",
+    "openai>=1",
+    "python-dotenv",
+    "PyGObject",
+]
