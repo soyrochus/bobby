@@ -15,4 +15,4 @@ fi
 cd "$PROJECT_ROOT"
 
 # Run the dictaite module with uv
-uv run -m dictaite "$@"
+uv run -m bobby "$@"
