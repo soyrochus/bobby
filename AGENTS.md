@@ -1,46 +1,46 @@
 # Improving Functionality and Visual Feedback in “Bobby” Pronunciation App
 
----
+### Prompt
 
-**Context:**
-The current GTK4-based application for “Bobby” has a working UI. The layout, navigation, and phrase lists are functional. However, key aspects of the interactive pronunciation workflow are not yet implemented or lack clear user feedback.
+**Objective:**
+Enhance the interactivity and user feedback of the application’s pronunciation practice workflow with more precise state distinction and clearer visual and textual cues.
 
 **Required Improvements:**
 
-1. **Practice Button Functionality**
+1. **Distinct State Indicators**
 
-   * When the user presses the practice button (microphone/play icon) next to a phrase:
+   * When playing sound, display a **speaker icon** and use the existing color scheme for playback.
+   * When recording, display a **record icon** (preferably a circular/red motif), again using the existing color scheme for recording.
+   * Ensure there is **no ambiguity between playing and recording states**—icons and visual elements must be clearly differentiated.
 
-     * The app should use the AI service (OpenAI or Gemini API) to synthesize the spoken version of the phrase (Text-to-Speech).
-     * The generated audio should be played back to the user through the system’s speakers.
-     * While audio is playing, a clear visual indication (e.g., animation, color change, progress bar, or icon change) should show that playback is in progress.
+2. **Sound Activity Bar**
 
-2. **Recording User Speech**
+   * Display a **horizontal bar** during both playback and recording.
 
-   * After playback, the app should prompt the user (visually and, optionally, audibly) to repeat the phrase.
-   * A prominent visual indicator should signal that the app is now **recording** (e.g., animated microphone, pulsing border, or color transition).
-   * The app records the student’s spoken attempt.
+     * The bar should visibly react to audio: animate or pulse according to sound activity.
+     * The bar’s color must correspond to the current state—recording or playing (use existing color assignments).
 
-3. **Analysis and Feedback**
+3. **Detailed Textual Feedback**
 
-   * The recorded audio should be sent to the AI service (OpenAI or Gemini API) for speech-to-text transcription and pronunciation analysis.
-   * The analysis results should be displayed on the UI:
+   * Improve the text indicator for fine-grained feedback:
 
-     * Clearly highlight which parts of the phrase were pronounced correctly or incorrectly.
-     * Provide actionable, readable feedback (e.g., missed words, mispronunciations).
-     * Optionally, display suggestions or encouragement.
+     * When connecting to the OpenAI API, indicate this status.
+     * When playing audio, indicate explicitly that playback is active.
+     * When recording, indicate that recording is underway.
+     * When sending the audio file to the OpenAI API, show that upload/processing is in progress.
+   * Status messages should update dynamically at each state change and provide clear, user-friendly descriptions.
 
-4. **Visual Feedback is Essential**
+4. **Threading and Responsiveness**
 
-   * At every stage, the user must have **clear, intuitive visual cues** about what the app is doing:
+   * Review and revise the threading or asynchronous execution logic.
 
-     * **Playback in progress**
-     * **Recording in progress**
-     * **Analysis/result display**
-   * Feedback should be accessible and unambiguous, using color, iconography, animation, or progress indicators as appropriate.
+     * Ensure all UI updates remain responsive and free of blocking during API calls, playback, and recording.
+     * Long-running or blocking operations (audio playback, recording, API interaction) should be performed in background threads or via asynchronous methods, with proper synchronization for UI updates.
 
----
+5. **Color Palette**
+
+   * Retain the current color choices for all UI elements; do not modify the palette, only enhance state indication and feedback.
 
 **Instruction:**
-“Update the current application so that pressing the practice button triggers the full pronunciation workflow: (1) plays the AI-generated phrase audio, (2) prompts and records the user’s speech with clear visual indication, (3) analyzes the recording with the AI, and (4) displays results with actionable feedback. At each step, provide strong, user-friendly visual cues reflecting the current state (playing, recording, analyzing, result). Do not change the overall UI layout—focus on implementing these functional and feedback elements to make the practice experience intuitive and interactive.”
+Implement the above improvements so that the user always has an unambiguous and responsive understanding of whether the app is playing, recording, or interacting with the AI backend. All state transitions should be visually and textually distinct, with appropriate asynchronous handling.
 
