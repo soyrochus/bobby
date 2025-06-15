@@ -5,3 +5,5 @@
 .analyzing { color: #cc6600; }
 .result-good { color: #009933; }
 .result-bad { color: #cc0000; }
+.sound-bar { min-height: 4px; }
+.sound-bar > trough > block { background: currentColor; }
